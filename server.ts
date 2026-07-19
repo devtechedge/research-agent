@@ -18,6 +18,7 @@ import {
   saveQuery
 } from './server/db';
 import { runResearchAgent } from './server/agent';
+import { sendDigestEmail } from './server/email';
 
 // Load environment variables
 dotenv.config();
@@ -83,15 +84,28 @@ async function startServer() {
     }
   });
 
-  // Simulates sending a test email
-  app.post('/api/test-email', (req, res) => {
+  // Simulates or triggers real sending of a test email
+  app.post('/api/test-email', async (req, res) => {
     try {
       const { digestDate } = req.body;
       const status = getStatus();
+      const digests = getDigests();
+      const latestDigest = digests[digests.length - 1];
+      const htmlBody = latestDigest?.htmlBody || `<h1>LymeWatch test</h1><p>This is a test notification from LymeWatch.</p>`;
+      
       addLog(`[Email Dispatcher] Resending latest HTML research digest to target: ${status.targetEmail}`);
-      addLog(`[Email Dispatcher] Connection established using OAuth2 token.json...`);
-      addLog(`[Email Dispatcher] Dispatch status: DELIVERED (Recipient: ${status.targetEmail})`);
-      res.json({ success: true, message: `Email successfully dispatched to ${status.targetEmail}` });
+      
+      const sendResult = await sendDigestEmail({
+        to: status.targetEmail,
+        subject: `LymeWatch Digest Resend - ${digestDate || 'Test'}`,
+        html: htmlBody,
+      });
+
+      if (sendResult.dispatched) {
+        res.json({ success: true, message: `Email successfully dispatched to ${status.targetEmail}` });
+      } else {
+        res.json({ success: true, message: `Email simulation complete. Please configure SMTP_USER and SMTP_PASS to receive real emails!` });
+      }
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

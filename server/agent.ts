@@ -6,6 +6,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { getEntities, upsertEntity, addDigest, addLog, readDB } from './db';
 import { DailyDigest, RunManifest, LymeEntity } from '../src/types';
+import { sendDigestEmail } from './email';
 
 // Helper to lazy-initialize GoogleGenAI client with key safety
 let aiClient: GoogleGenAI | null = null;
@@ -454,7 +455,17 @@ Key botanical findings:
   // Write back to database memory
   addDigest(newDigest);
   log(`LymeWatch Daily run complete. Registered YYYY-MM-DD Markdown and committed vector snapshots.`);
-  log(`Email notification successfully queued and sent to ${targetEmail} at 20:00 IST.`);
+  
+  // Trigger real email dispatch
+  try {
+    await sendDigestEmail({
+      to: targetEmail,
+      subject: `LymeWatch Daily Medical Digest - Consensus Updates for ${newDigest.date}`,
+      html: newDigest.htmlBody,
+    });
+  } catch (err: any) {
+    log(`[Email Dispatcher] Failed to deliver email: ${err.message || err}`);
+  }
 
   return newDigest;
 }
