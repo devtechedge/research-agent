@@ -335,9 +335,9 @@ export default function App() {
           
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl relative">
-                <Activity className="w-7 h-7 text-emerald-400 animate-pulse" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#121824]" />
+              <div className={`p-3 border rounded-xl relative transition-all duration-300 ${theme === 'dark' ? 'bg-emerald-950/80 border-emerald-500/40' : 'bg-emerald-50 border-emerald-200'}`}>
+                <Activity className={`w-7 h-7 animate-pulse transition-colors duration-300 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                <div className={`absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 transition-colors duration-300 ${theme === 'dark' ? 'border-[#121824]' : 'border-white'}`} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -459,17 +459,25 @@ export default function App() {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden mt-4"
               >
-                <div className="bg-[#05070c] border border-emerald-500/20 rounded-xl p-4 font-mono text-xs text-emerald-400">
-                  <div className="flex items-center justify-between border-b border-emerald-950/60 pb-2 mb-3">
+                <div className={`border rounded-xl p-4 font-mono text-xs transition-all duration-300 ${
+                  theme === 'dark' 
+                    ? 'bg-[#05070c] border-emerald-500/20 text-emerald-400' 
+                    : 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
+                }`}>
+                  <div className={`flex items-center justify-between border-b pb-2 mb-3 transition-colors duration-300 ${
+                    theme === 'dark' ? 'border-emerald-950/60' : 'border-emerald-200'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Terminal className="w-4 h-4 text-emerald-400 animate-pulse" />
-                      <span className="font-semibold text-emerald-300">Live Agent Execution Stream</span>
+                      <Terminal className={`w-4 h-4 animate-pulse transition-colors duration-300 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className={`font-semibold transition-colors duration-300 ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>Live Agent Execution Stream</span>
                     </div>
-                    <span className="text-slate-500">{agentProgress}% completed</span>
+                    <span className={theme === 'dark' ? 'text-slate-500' : 'text-emerald-600/70'}>{agentProgress}% completed</span>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full bg-slate-900 rounded-full h-1.5 mb-3 overflow-hidden">
+                  <div className={`w-full rounded-full h-1.5 mb-3 overflow-hidden transition-colors duration-300 ${
+                    theme === 'dark' ? 'bg-slate-900' : 'bg-emerald-100'
+                  }`}>
                     <div 
                       className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${agentProgress}%` }}
@@ -479,8 +487,14 @@ export default function App() {
                   <div className="max-h-[160px] overflow-y-auto flex flex-col gap-1.5 scrollbar-thin">
                     {agentLogs.map((logStr, idx) => (
                       <div key={idx} className="flex gap-2">
-                        <span className="text-slate-600">[{new Date().toLocaleTimeString()}]</span>
-                        <span className={logStr.includes('[ERROR]') || logStr.includes('[CRITICAL]') ? 'text-rose-400' : ''}>{logStr}</span>
+                        <span className={theme === 'dark' ? 'text-slate-600' : 'text-emerald-600/60'}>[{new Date().toLocaleTimeString()}]</span>
+                        <span className={
+                          logStr.includes('[ERROR]') || logStr.includes('[CRITICAL]') 
+                            ? 'text-rose-400 font-bold' 
+                            : theme === 'dark' 
+                              ? 'text-emerald-400' 
+                              : 'text-emerald-900'
+                        }>{logStr}</span>
                       </div>
                     ))}
                     <div ref={logEndRef} />
@@ -653,8 +667,8 @@ export default function App() {
                           <div className="flex flex-col gap-6">
                             
                             {/* OVERVIEW SECTION */}
-                            <div className="bg-emerald-950/20 border-l-4 border-emerald-500 p-4 rounded-r-lg">
-                              <h4 className="text-xs uppercase tracking-wider font-bold text-emerald-400 mb-1">Executive Summary</h4>
+                            <div className={`border-l-4 border-emerald-500 p-4 rounded-r-lg transition-all duration-300 ${theme === 'dark' ? 'bg-emerald-950/20' : 'bg-emerald-50/50'}`}>
+                              <h4 className={`text-xs uppercase tracking-wider font-bold mb-1 transition-colors duration-300 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'}`}>Executive Summary</h4>
                               <p className={`text-sm leading-relaxed transition-colors duration-300 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{selectedDigest.summary}</p>
                             </div>
 
@@ -734,7 +748,11 @@ export default function App() {
 
                     {/* PREVIEW CONTAINER FOOTER */}
                     {selectedDigest && (
-                      <div className="bg-[#121824] border-t border-[#1e293b] px-4 py-3 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                      <div className={`border-t px-4 py-3 flex items-center justify-between text-[11px] font-mono transition-colors duration-300 ${
+                        theme === 'dark' 
+                          ? 'bg-[#121824] border-[#1e293b] text-slate-500' 
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }`}>
                         <span>Model: {selectedDigest.runManifest.modelUsed}</span>
                         <span>Dispatched successfully at {selectedDigest.runManifest.timestamp.split('T')[1].substring(0, 5)} GMT</span>
                       </div>
@@ -794,14 +812,14 @@ export default function App() {
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <h4 className={`text-sm font-bold transition-colors ${theme === 'dark' ? 'text-white group-hover:text-emerald-400' : 'text-slate-800 group-hover:text-emerald-600'}`}>{entity.name}</h4>
-                              <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                              <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border transition-all duration-300 ${
                                 entity.type === 'drug' 
-                                  ? 'bg-blue-950/40 border-blue-500/30 text-blue-400' 
+                                  ? theme === 'dark' ? 'bg-blue-950/40 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700' 
                                   : entity.type === 'herb'
-                                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400'
+                                  ? theme === 'dark' ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                                   : entity.type === 'trial'
-                                  ? 'bg-amber-950/40 border-amber-500/30 text-amber-400'
-                                  : 'bg-purple-950/40 border-purple-500/30 text-purple-400'
+                                  ? theme === 'dark' ? 'bg-amber-950/40 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'
+                                  : theme === 'dark' ? 'bg-purple-950/40 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-700'
                               }`}>
                                 {entity.type.toUpperCase()}
                               </span>
@@ -836,7 +854,7 @@ export default function App() {
                         <p className={`text-xs leading-relaxed p-3 rounded-lg flex-1 border transition-all duration-300 ${
                           theme === 'dark' 
                             ? 'text-slate-400 bg-[#121824]/40 border-[#1e293b]/60' 
-                            : 'text-slate-600 bg-white border-slate-150'
+                            : 'text-slate-600 bg-white border-slate-200'
                         }`}>
                           {entity.details}
                         </p>
