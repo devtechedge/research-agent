@@ -24,7 +24,9 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
-  Award
+  Award,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -77,6 +79,18 @@ export default function App() {
   
   // Global feedback alerts
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Theme state: dark by default, persistent in localStorage
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('lymewatch_theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+  });
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('lymewatch_theme', newTheme);
+  };
 
   // Fetch initial data
   useEffect(() => {
@@ -290,7 +304,7 @@ export default function App() {
   ].filter(d => d.value > 0);
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-400">
+    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 ${theme === 'dark' ? 'bg-[#090d16] text-[#e2e8f0]' : 'bg-[#f8fafc] text-[#1e293b]'} selection:bg-emerald-500/30 selection:text-emerald-400`}>
       
       {/* GLOBAL ALERTS */}
       <AnimatePresence>
@@ -315,7 +329,7 @@ export default function App() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
         
         {/* TOP INTELLIGENCE HEADER */}
-        <header className="bg-[#121824] border border-[#1e293b] rounded-2xl p-6 relative overflow-hidden shadow-2xl">
+        <header className={`rounded-2xl p-6 relative overflow-hidden transition-all duration-300 border ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] shadow-2xl' : 'bg-white border-slate-200/80 shadow-md'}`}>
           <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
           
@@ -327,28 +341,39 @@ export default function App() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-sans">LymeWatch</h1>
-                  <span className="text-xs font-mono px-2 py-0.5 bg-[#1e293b] rounded border border-[#334155] text-slate-400">v1.2 MVP</span>
+                  <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight font-sans transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>LymeWatch</h1>
+                  <span className={`text-xs font-mono px-2 py-0.5 rounded border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#1e293b] border-[#334155] text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>v1.2 MVP</span>
+                  <button
+                    onClick={toggleTheme}
+                    className={`p-1.5 rounded-lg border transition-all duration-300 ml-1 ${
+                      theme === 'dark'
+                        ? 'bg-[#1e293b] border-[#334155] text-amber-400 hover:text-amber-300 hover:bg-[#334155]'
+                        : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-slate-250'
+                    }`}
+                    title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  >
+                    {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
-                <p className="text-sm text-slate-400 mt-1">Long-Horizon Autonomous Daily Chronic Lyme Research Agent</p>
+                <p className={`text-sm mt-1 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Long-Horizon Autonomous Daily Chronic Lyme Research Agent</p>
               </div>
             </div>
 
             {/* LIVE TELEMETRY ROW */}
-            <div className="grid grid-cols-2 sm:flex items-center gap-4 text-xs font-mono text-slate-400">
-              <div className="bg-[#0b0f19] border border-[#1e293b] rounded-xl px-4 py-2.5 flex flex-col gap-1 min-w-[140px]">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Target Recipient</span>
-                <span className="text-slate-200 text-xs font-medium truncate">{status.targetEmail}</span>
+            <div className={`grid grid-cols-2 sm:flex items-center gap-4 text-xs font-mono transition-colors duration-300 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+              <div className={`rounded-xl px-4 py-2.5 flex flex-col gap-1 min-w-[140px] border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200/60'}`}>
+                <span className={`text-[10px] uppercase font-bold tracking-wider transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Target Recipient</span>
+                <span className={`text-xs font-medium truncate transition-colors duration-300 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{status.targetEmail}</span>
               </div>
-              <div className="bg-[#0b0f19] border border-[#1e293b] rounded-xl px-4 py-2.5 flex flex-col gap-1 min-w-[140px]">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Discovered Rate Limit</span>
-                <span className="text-slate-200 text-xs font-medium truncate">
+              <div className={`rounded-xl px-4 py-2.5 flex flex-col gap-1 min-w-[140px] border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200/60'}`}>
+                <span className={`text-[10px] uppercase font-bold tracking-wider transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Discovered Rate Limit</span>
+                <span className={`text-xs font-medium truncate transition-colors duration-300 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                   {status.discoveredRPDRemaining} RPD ({status.discoveredRPM} RPM)
                 </span>
               </div>
-              <div className="bg-[#0b0f19] border border-[#1e293b] rounded-xl px-4 py-2.5 flex flex-col gap-1 min-w-[140px] col-span-2 sm:col-span-1">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Cron Schedule</span>
-                <span className="text-emerald-400 text-xs font-medium flex items-center gap-1.5">
+              <div className={`rounded-xl px-4 py-2.5 flex flex-col gap-1 min-w-[140px] col-span-2 sm:col-span-1 border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200/60'}`}>
+                <span className={`text-[10px] uppercase font-bold tracking-wider transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Cron Schedule</span>
+                <span className="text-emerald-500 text-xs font-medium flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                   Daily @ 20:00 IST (14:30 UTC)
                 </span>
@@ -357,7 +382,7 @@ export default function App() {
           </div>
 
           {/* ACTION STRIP */}
-          <div className="mt-6 pt-5 border-t border-[#1e293b] flex flex-wrap gap-4 items-center justify-between">
+          <div className={`mt-6 pt-5 border-t flex flex-wrap gap-4 items-center justify-between transition-colors duration-300 ${theme === 'dark' ? 'border-[#1e293b]' : 'border-slate-200'}`}>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleRunAgent}
@@ -374,14 +399,18 @@ export default function App() {
 
               <button
                 onClick={() => setEmailFormOpen(!emailFormOpen)}
-                className="px-4 py-2.5 bg-[#1e293b] hover:bg-[#334155]/60 border border-[#334155] rounded-xl font-medium text-sm text-slate-200 flex items-center gap-2 transition-all active:scale-[0.98]"
+                className={`px-4 py-2.5 border rounded-xl font-medium text-sm flex items-center gap-2 transition-all active:scale-[0.98] ${
+                  theme === 'dark' 
+                    ? 'bg-[#1e293b] hover:bg-[#334155]/60 border-[#334155] text-slate-200' 
+                    : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                }`}
               >
                 <Settings className="w-4 h-4" />
                 Change Target Email
               </button>
             </div>
 
-            <div className="text-xs text-slate-500 flex items-center gap-2">
+            <div className={`text-xs flex items-center gap-2 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
               <ShieldAlert className="w-4 h-4 text-emerald-500/70" />
               <span>Full compliance with $0.00/month architectural budget directive.</span>
             </div>
@@ -396,16 +425,16 @@ export default function App() {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden mt-4"
               >
-                <form onSubmit={handleUpdateSettings} className="bg-[#0b0f19] border border-[#1e293b] rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <form onSubmit={handleUpdateSettings} className={`rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="flex-1">
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1">Update Target Email</label>
+                    <label className={`block text-[10px] uppercase tracking-wider font-bold mb-1 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Update Target Email</label>
                     <input 
                       type="email" 
                       required
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="Enter clinical report recipient email"
-                      className="w-full bg-[#121824] border border-[#1e293b] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all"
+                      className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all border ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] text-white' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
                   <div className="flex items-end justify-end mt-4 sm:mt-0">
@@ -469,14 +498,16 @@ export default function App() {
           <main className="lg:col-span-2 flex flex-col gap-6">
             
             {/* VIEW MODE SELECTION TABS */}
-            <div className="bg-[#121824]/60 border border-[#1e293b] p-1.5 rounded-xl flex items-center justify-between">
+            <div className={`p-1.5 rounded-xl flex items-center justify-between border transition-all duration-300 ${theme === 'dark' ? 'bg-[#121824]/60 border-[#1e293b]' : 'bg-white border-slate-200 shadow-sm'}`}>
               <div className="flex gap-1">
                 <button
                   onClick={() => setActiveTab('digests')}
                   className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
                     activeTab === 'digests' 
                       ? 'bg-emerald-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-white hover:bg-[#1e293b]/40'
+                      : theme === 'dark'
+                      ? 'text-slate-400 hover:text-white hover:bg-[#1e293b]/40'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -487,7 +518,9 @@ export default function App() {
                   className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
                     activeTab === 'entities' 
                       ? 'bg-emerald-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-white hover:bg-[#1e293b]/40'
+                      : theme === 'dark'
+                      ? 'text-slate-400 hover:text-white hover:bg-[#1e293b]/40'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <Database className="w-4 h-4" />
@@ -498,7 +531,9 @@ export default function App() {
                   className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
                     activeTab === 'sandbox' 
                       ? 'bg-emerald-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-white hover:bg-[#1e293b]/40'
+                      : theme === 'dark'
+                      ? 'text-slate-400 hover:text-white hover:bg-[#1e293b]/40'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <Sparkles className="w-4 h-4" />
@@ -507,11 +542,11 @@ export default function App() {
               </div>
 
               {/* STATS COUNT */}
-              <div className="hidden sm:flex items-center gap-2 px-3 text-xs text-slate-500 font-mono">
+              <div className={`hidden sm:flex items-center gap-2 px-3 text-xs font-mono transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
                 <span>Memory Cache:</span>
-                <span className="text-emerald-400 font-bold">{entities.length} entities</span>
+                <span className="text-emerald-500 font-bold">{entities.length} entities</span>
                 <span>/</span>
-                <span className="text-blue-400 font-bold">{digests.length} digests</span>
+                <span className="text-blue-500 font-bold">{digests.length} digests</span>
               </div>
             </div>
 
@@ -522,10 +557,10 @@ export default function App() {
                 {/* DIGEST PICKER */}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div className="sm:col-span-1 flex flex-col gap-2">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Digest Runs</span>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Digest Runs</span>
                     <div className="flex sm:flex-col gap-2 max-h-[400px] overflow-x-auto sm:overflow-y-auto pr-1">
                       {digests.length === 0 ? (
-                        <div className="text-xs text-slate-500 p-3 bg-[#121824]/40 border border-[#1e293b] rounded-lg text-center w-full">
+                        <div className={`text-xs p-3 rounded-lg text-center w-full border transition-all ${theme === 'dark' ? 'bg-[#121824]/40 border-[#1e293b] text-slate-500' : 'bg-slate-50 border-slate-200/80 text-slate-400'}`}>
                           No daily run compiled yet. Trigger a run above!
                         </div>
                       ) : (
@@ -535,12 +570,16 @@ export default function App() {
                             onClick={() => setSelectedDigest(dig)}
                             className={`px-3 py-2.5 rounded-lg border text-left flex sm:flex-col justify-between items-center sm:items-start gap-1 transition-all shrink-0 min-w-[120px] ${
                               selectedDigest?.date === dig.date
-                                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-md'
-                                : 'bg-[#121824]/40 border-[#1e293b] text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                                ? theme === 'dark'
+                                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-md'
+                                  : 'bg-emerald-50 border-emerald-500/40 text-emerald-700 shadow-sm'
+                                : theme === 'dark'
+                                ? 'bg-[#121824]/40 border-[#1e293b] text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
                             }`}
                           >
                             <span className="text-xs font-mono font-bold">{dig.date}</span>
-                            <span className="text-[10px] text-slate-500 capitalize shrink-0">{dig.runManifest.budgetTier} Run</span>
+                            <span className={`text-[10px] capitalize shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{dig.runManifest.budgetTier} Run</span>
                           </button>
                         ))
                       )}
@@ -548,16 +587,16 @@ export default function App() {
                   </div>
 
                   {/* DIGEST PREVIEWER CONTAINER */}
-                  <div className="sm:col-span-3 bg-[#121824] border border-[#1e293b] rounded-xl flex flex-col overflow-hidden shadow-xl min-h-[450px]">
+                  <div className={`sm:col-span-3 rounded-xl flex flex-col overflow-hidden border transition-all duration-300 ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] shadow-xl' : 'bg-white border-slate-200 shadow-md'}`}>
                     
                     {/* PREVIEW CONTAINER HEADER */}
-                    <div className="bg-[#1a2333] border-b border-[#1e293b] px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className={`px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b transition-colors duration-300 ${theme === 'dark' ? 'bg-[#1a2333] border-b-[#1e293b]' : 'bg-slate-50 border-b-slate-200'}`}>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-white">Daily Intelligence Report</h3>
-                          <span className="text-xs text-slate-500 font-mono">({selectedDigest?.date || 'No Data'})</span>
+                          <h3 className={`text-sm font-bold transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Daily Intelligence Report</h3>
+                          <span className={`text-xs font-mono transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>({selectedDigest?.date || 'No Data'})</span>
                         </div>
-                        <p className="text-xs text-slate-400 truncate mt-0.5 max-w-[320px]">
+                        <p className={`text-xs truncate mt-0.5 max-w-[320px] transition-colors duration-300 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                           {selectedDigest?.summary || 'No diagnostic research logs available.'}
                         </p>
                       </div>
@@ -565,13 +604,15 @@ export default function App() {
                       {/* TOGGLE & TEST BUTTON */}
                       {selectedDigest && (
                         <div className="flex items-center gap-2">
-                          <div className="bg-[#0f172a] rounded-lg p-0.5 flex border border-[#334155]">
+                          <div className={`rounded-lg p-0.5 flex border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0f172a] border-[#334155]' : 'bg-slate-100 border-slate-200'}`}>
                             <button
                               onClick={() => setViewMode('document')}
                               className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                                 viewMode === 'document' 
                                   ? 'bg-emerald-600 text-white' 
-                                  : 'text-slate-400 hover:text-white'
+                                  : theme === 'dark'
+                                  ? 'text-slate-400 hover:text-white'
+                                  : 'text-slate-500 hover:text-slate-900'
                               }`}
                             >
                               Digest Layout
@@ -581,7 +622,9 @@ export default function App() {
                               className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                                 viewMode === 'email' 
                                   ? 'bg-emerald-600 text-white' 
-                                  : 'text-slate-400 hover:text-white'
+                                  : theme === 'dark'
+                                  ? 'text-slate-400 hover:text-white'
+                                  : 'text-slate-500 hover:text-slate-900'
                               }`}
                             >
                               Email Preview
@@ -591,7 +634,11 @@ export default function App() {
                           <button
                             onClick={() => handleResendEmail(selectedDigest.date)}
                             title="Resend this digest via Gmail API"
-                            className="p-1.5 bg-[#1e293b] hover:bg-slate-700 rounded-lg text-slate-300 hover:text-emerald-400 border border-[#334155] transition-all"
+                            className={`p-1.5 border rounded-lg transition-all ${
+                              theme === 'dark' 
+                                ? 'bg-[#1e293b] hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border-[#334155]' 
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-emerald-600 border-slate-200'
+                            }`}
                           >
                             <Mail className="w-4 h-4" />
                           </button>
@@ -608,56 +655,56 @@ export default function App() {
                             {/* OVERVIEW SECTION */}
                             <div className="bg-emerald-950/20 border-l-4 border-emerald-500 p-4 rounded-r-lg">
                               <h4 className="text-xs uppercase tracking-wider font-bold text-emerald-400 mb-1">Executive Summary</h4>
-                              <p className="text-sm leading-relaxed text-slate-200">{selectedDigest.summary}</p>
+                              <p className={`text-sm leading-relaxed transition-colors duration-300 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{selectedDigest.summary}</p>
                             </div>
 
                             {/* CONVENTIONAL UPDATES */}
                             <div className="flex flex-col gap-2">
-                              <h4 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-[#1e293b] pb-1.5">
+                              <h4 className={`text-sm font-semibold flex items-center gap-2 border-b pb-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-white border-[#1e293b]' : 'text-slate-800 border-slate-100'}`}>
                                 <span className="text-blue-400">🩺</span> Conventional Medicine Research
                               </h4>
-                              <div className="text-sm leading-relaxed text-slate-300 font-sans whitespace-pre-wrap">
+                              <div className={`text-sm leading-relaxed font-sans whitespace-pre-wrap transition-colors duration-300 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                                 {selectedDigest.conventionalMarkdown}
                               </div>
                             </div>
 
                             {/* HOLISTIC UPDATES */}
                             <div className="flex flex-col gap-2">
-                              <h4 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-[#1e293b] pb-1.5">
+                              <h4 className={`text-sm font-semibold flex items-center gap-2 border-b pb-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-white border-[#1e293b]' : 'text-slate-800 border-slate-100'}`}>
                                 <span className="text-emerald-400">🌱</span> Integrative Botanical Guidelines
                               </h4>
-                              <div className="text-sm leading-relaxed text-slate-300 font-sans whitespace-pre-wrap">
+                              <div className={`text-sm leading-relaxed font-sans whitespace-pre-wrap transition-colors duration-300 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                                 {selectedDigest.holisticMarkdown}
                               </div>
                             </div>
 
                             {/* TRIALS & PREPRINTS */}
                             <div className="flex flex-col gap-2">
-                              <h4 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-[#1e293b] pb-1.5">
+                              <h4 className={`text-sm font-semibold flex items-center gap-2 border-b pb-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-white border-[#1e293b]' : 'text-slate-800 border-slate-100'}`}>
                                 <span className="text-yellow-400">📊</span> Clinical Trial Registry Records
                               </h4>
-                              <div className="text-sm leading-relaxed text-slate-300 font-sans whitespace-pre-wrap">
+                              <div className={`text-sm leading-relaxed font-sans whitespace-pre-wrap transition-colors duration-300 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                                 {selectedDigest.trialsMarkdown}
                               </div>
                             </div>
 
                             {/* WEEKLY WATCHLIST */}
                             <div className="flex flex-col gap-2">
-                              <h4 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-[#1e293b] pb-1.5">
+                              <h4 className={`text-sm font-semibold flex items-center gap-2 border-b pb-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-white border-[#1e293b]' : 'text-slate-800 border-slate-100'}`}>
                                 <span className="text-indigo-400">🎯</span> Spotlight Target Watchlist
                               </h4>
-                              <div className="text-sm leading-relaxed text-slate-300 font-sans whitespace-pre-wrap">
+                              <div className={`text-sm leading-relaxed font-sans whitespace-pre-wrap transition-colors duration-300 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                                 {selectedDigest.watchlistMarkdown}
                               </div>
                             </div>
 
                             {/* WHAT CHANGED DELTA */}
-                            <div className="bg-[#1c2333]/70 border border-[#303e54] p-4 rounded-xl flex flex-col gap-2">
-                              <h4 className="text-xs uppercase tracking-wider font-bold text-slate-300 flex items-center gap-2">
+                            <div className={`p-4 rounded-xl flex flex-col gap-2 border transition-all duration-300 ${theme === 'dark' ? 'bg-[#1c2333]/70 border-[#303e54]' : 'bg-slate-50 border-slate-200'}`}>
+                              <h4 className={`text-xs uppercase tracking-wider font-bold flex items-center gap-2 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                                 What Changed Since Yesterday (Deltas)
                               </h4>
-                              <div className="text-xs leading-relaxed text-slate-400 font-mono whitespace-pre-wrap">
+                              <div className={`text-xs leading-relaxed font-mono whitespace-pre-wrap transition-colors duration-300 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-650'}`}>
                                 {selectedDigest.deltasMarkdown}
                               </div>
                             </div>
@@ -700,16 +747,16 @@ export default function App() {
 
             {/* TAB CONTENT 2: MEDICAL ENTITY memory DIRECTORY */}
             {activeTab === 'entities' && (
-              <div className="bg-[#121824] border border-[#1e293b] rounded-2xl p-6 flex flex-col gap-6 shadow-2xl">
+              <div className={`rounded-2xl p-6 flex flex-col gap-6 border transition-all duration-300 ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] shadow-2xl' : 'bg-white border-slate-200 shadow-md'}`}>
                 
                 {/* SEARCH & FILTERS */}
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 className={`text-lg font-bold flex items-center gap-2 transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                       <Database className="w-5 h-5 text-emerald-400" />
                       Entity Memory Directory
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className={`text-xs mt-1 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                       Structured entity memory mapping researched pharmacological agents, botanicals, trials, and researchers.
                     </p>
                   </div>
@@ -721,7 +768,11 @@ export default function App() {
                       placeholder="Search entities (e.g. Disulfiram)"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all"
+                      className={`w-full rounded-lg pl-9 pr-4 py-2 text-sm transition-all border ${
+                        theme === 'dark' 
+                          ? 'bg-[#0b0f19] border-[#1e293b] text-white placeholder-slate-500 focus:border-emerald-500' 
+                          : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500'
+                      }`}
                     />
                   </div>
                 </div>
@@ -733,12 +784,16 @@ export default function App() {
                     .map((entity) => (
                       <div 
                         key={entity.id}
-                        className="bg-[#0b0f19] border border-[#1e293b] hover:border-[#334155] rounded-xl p-5 flex flex-col gap-3 transition-all group"
+                        className={`border rounded-xl p-5 flex flex-col gap-3 transition-all group ${
+                          theme === 'dark' 
+                            ? 'bg-[#0b0f19] border-[#1e293b] hover:border-[#334155]' 
+                            : 'bg-slate-50/50 border-slate-200 hover:border-slate-300 hover:bg-white hover:shadow-md'
+                        }`}
                       >
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{entity.name}</h4>
+                              <h4 className={`text-sm font-bold transition-colors ${theme === 'dark' ? 'text-white group-hover:text-emerald-400' : 'text-slate-800 group-hover:text-emerald-600'}`}>{entity.name}</h4>
                               <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                                 entity.type === 'drug' 
                                   ? 'bg-blue-950/40 border-blue-500/30 text-blue-400' 
@@ -778,7 +833,11 @@ export default function App() {
                         </div>
 
                         {/* ENTITY SUMMARY TEXT */}
-                        <p className="text-xs leading-relaxed text-slate-400 bg-[#121824]/40 border border-[#1e293b]/60 p-3 rounded-lg flex-1">
+                        <p className={`text-xs leading-relaxed p-3 rounded-lg flex-1 border transition-all duration-300 ${
+                          theme === 'dark' 
+                            ? 'text-slate-400 bg-[#121824]/40 border-[#1e293b]/60' 
+                            : 'text-slate-600 bg-white border-slate-150'
+                        }`}>
                           {entity.details}
                         </p>
 
@@ -794,7 +853,7 @@ export default function App() {
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono border-t border-[#1e293b]/40 pt-2">
+                        <div className={`flex items-center justify-between text-[10px] font-mono border-t pt-2 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500 border-[#1e293b]/40' : 'text-slate-400 border-slate-100'}`}>
                           <span>Credibility: {entity.credibilityScore}%</span>
                           <span>Last Seen: {entity.lastSeen}</span>
                         </div>
@@ -813,28 +872,28 @@ export default function App() {
 
             {/* TAB CONTENT 3: RESEARCH SANDBOX (Search Grounding) */}
             {activeTab === 'sandbox' && (
-              <div className="bg-[#121824] border border-[#1e293b] rounded-2xl p-6 flex flex-col gap-6 shadow-2xl">
+              <div className={`rounded-2xl p-6 flex flex-col gap-6 border transition-all duration-300 ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] shadow-2xl' : 'bg-white border-slate-200 shadow-md'}`}>
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <h2 className={`text-lg font-bold flex items-center gap-2 transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                     <Sparkles className="w-5 h-5 text-emerald-400" />
                     Interactive Research Sandbox
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className={`text-xs mt-1 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                     Interact directly with the Gemini 3.5 Flash Search Grounding engine. Query real-time clinical literature on persistent Lyme, Babesia, or Bartonelea, and verify direct source links.
                   </p>
                 </div>
 
                 {/* SEARCH FORM */}
-                <form onSubmit={handleCustomSearch} className="flex flex-col gap-4 bg-[#0b0f19] border border-[#1e293b] p-4 rounded-xl">
+                <form onSubmit={handleCustomSearch} className={`flex flex-col gap-4 p-4 rounded-xl border transition-all duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="flex flex-col sm:flex-row gap-3">
                     
                     {/* Category Selector */}
                     <div className="w-full sm:w-44">
-                      <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">Category context</label>
+                      <label className={`block text-[10px] uppercase font-bold tracking-wider mb-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Category context</label>
                       <select 
                         value={sandboxCategory}
                         onChange={(e) => setSandboxCategory(e.target.value as any)}
-                        className="w-full bg-[#121824] border border-[#1e293b] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-all"
+                        className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all border ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}
                       >
                         <option value="conventional">🩺 Conventional</option>
                         <option value="holistic">🌱 Holistic / Herbal</option>
@@ -844,20 +903,20 @@ export default function App() {
 
                     {/* Query Input */}
                     <div className="flex-1">
-                      <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">Search Grounding Query</label>
+                      <label className={`block text-[10px] uppercase font-bold tracking-wider mb-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Search Grounding Query</label>
                       <input 
                         type="text"
                         required
                         value={sandboxQuery}
                         onChange={(e) => setSandboxQuery(e.target.value)}
                         placeholder="What are the clinical findings for Cryptolepis sanguinolenta in persistent Borrelia burgdorferi?"
-                        className="w-full bg-[#121824] border border-[#1e293b] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all"
+                        className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all border ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b] text-white' : 'bg-white border-slate-300 text-slate-900'}`}
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-[#1e293b]/40">
-                    <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                  <div className={`flex justify-between items-center pt-2 border-t transition-colors duration-300 ${theme === 'dark' ? 'border-[#1e293b]/40' : 'border-slate-200'}`}>
+                    <div className={`text-[10px] flex items-center gap-1.5 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
                       <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Model selected: gemini-3.5-flash with Grounding tools</span>
                     </div>
@@ -883,7 +942,7 @@ export default function App() {
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#0b0f19] border border-[#1e293b] p-8 rounded-xl text-center text-slate-400 flex flex-col items-center justify-center gap-3"
+                      className={`p-8 rounded-xl text-center flex flex-col items-center justify-center gap-3 border transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
                     >
                       <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
                       <p className="text-sm font-medium">Querying active Google Search indexes and synthesizing medical evidence...</p>
@@ -895,22 +954,22 @@ export default function App() {
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#0b0f19] border border-[#1e293b] rounded-xl overflow-hidden flex flex-col"
+                      className={`rounded-xl overflow-hidden flex flex-col border transition-all duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200 shadow-inner'}`}
                     >
-                      <div className="bg-[#121824] px-5 py-3 border-b border-[#1e293b] flex justify-between items-center">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">Research Grounding Result</span>
+                      <div className={`px-5 py-3 border-b flex justify-between items-center transition-colors duration-300 ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b]' : 'bg-slate-100 border-slate-200'}`}>
+                        <span className={`text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Research Grounding Result</span>
                         <span className="text-[10px] text-slate-500 font-mono">{new Date(sandboxResult.timestamp).toLocaleString()}</span>
                       </div>
 
                       <div className="p-5 flex flex-col gap-5">
                         {/* Response Text */}
-                        <div className="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap font-sans">
+                        <div className={`text-sm leading-relaxed whitespace-pre-wrap font-sans transition-colors duration-300 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                           {sandboxResult.response}
                         </div>
 
                         {/* Grounding Source Chunks */}
                         {sandboxResult.sources && sandboxResult.sources.length > 0 && (
-                          <div className="border-t border-[#1e293b] pt-4 flex flex-col gap-2">
+                          <div className={`border-t pt-4 flex flex-col gap-2 transition-colors duration-300 ${theme === 'dark' ? 'border-[#1e293b]' : 'border-slate-200'}`}>
                             <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Grounded Source citations</span>
                             <div className="flex flex-wrap gap-2">
                               {sandboxResult.sources.map((src, i) => (
@@ -919,7 +978,11 @@ export default function App() {
                                   href={src.uri} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="px-3 py-1.5 bg-[#121824] hover:bg-[#1e293b] border border-[#1e293b] rounded-lg text-xs text-slate-300 hover:text-emerald-400 flex items-center gap-1.5 transition-all truncate max-w-xs"
+                                  className={`px-3 py-1.5 border rounded-lg text-xs flex items-center gap-1.5 transition-all truncate max-w-xs ${
+                                    theme === 'dark' 
+                                      ? 'bg-[#121824] hover:bg-[#1e293b] border-[#1e293b] text-slate-300 hover:text-emerald-400' 
+                                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-emerald-600 shadow-sm'
+                                  }`}
                                 >
                                   <ExternalLink className="w-3 h-3" />
                                   <span>{src.title || 'Verified Source'}</span>
@@ -942,13 +1005,13 @@ export default function App() {
           <aside className="flex flex-col gap-6">
             
             {/* PANEL 1: RESEARCH METRICS (RECHARTS BAR CHART) */}
-            <section className="bg-[#121824] border border-[#1e293b] rounded-2xl p-5 flex flex-col gap-4 shadow-2xl">
+            <section className={`border rounded-2xl p-5 flex flex-col gap-4 shadow-2xl transition-all duration-300 ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b]' : 'bg-white border-slate-200'}`}>
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className={`text-sm font-bold flex items-center gap-2 transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                   <TrendingUp className="w-4 h-4 text-emerald-400" />
                   Medical Evidence Scoring
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Credibility indices based on clinical trials and peer reviews.</p>
+                <p className={`text-xs mt-0.5 transition-colors duration-300 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Credibility indices based on clinical trials and peer reviews.</p>
               </div>
 
               {chartData.length > 0 ? (
@@ -958,8 +1021,13 @@ export default function App() {
                       <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} />
                       <YAxis stroke="#64748b" fontSize={9} domain={[0, 100]} />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                        labelStyle={{ color: '#ffffff', fontSize: '11px', fontWeight: 'bold' }}
+                        contentStyle={{ 
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', 
+                          borderColor: theme === 'dark' ? '#1e293b' : '#e2e8f0', 
+                          borderRadius: '8px',
+                          color: theme === 'dark' ? '#ffffff' : '#000000'
+                        }}
+                        labelStyle={{ color: theme === 'dark' ? '#ffffff' : '#0f172a', fontSize: '11px', fontWeight: 'bold' }}
                         itemStyle={{ color: '#10b981', fontSize: '11px' }}
                       />
                       <Bar dataKey="Credibility Score" fill="#10b981" radius={[4, 4, 0, 0]}>
@@ -981,7 +1049,7 @@ export default function App() {
 
               {/* Pie chart summary */}
               {pieData.length > 0 && (
-                <div className="border-t border-[#1e293b] pt-4 flex flex-col gap-3">
+                <div className={`border-t pt-4 flex flex-col gap-3 transition-colors duration-300 ${theme === 'dark' ? 'border-[#1e293b]' : 'border-slate-100'}`}>
                   <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Knowledge Distribution</span>
                   <div className="flex items-center justify-between gap-4">
                     <div className="w-20 h-20">
@@ -1011,7 +1079,7 @@ export default function App() {
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
                             <span>{d.name}</span>
                           </div>
-                          <span className="font-mono text-slate-200 font-bold">{d.value}</span>
+                          <span className={`font-mono font-bold transition-colors duration-300 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{d.value}</span>
                         </div>
                       ))}
                     </div>
@@ -1021,30 +1089,30 @@ export default function App() {
             </section>
 
             {/* PANEL 2: LIVE AUDIT TRAIL LOG */}
-            <section className="bg-[#121824] border border-[#1e293b] rounded-2xl p-5 flex flex-col gap-4 shadow-2xl">
+            <section className={`border rounded-2xl p-5 flex flex-col gap-4 shadow-2xl transition-all duration-300 ${theme === 'dark' ? 'bg-[#121824] border-[#1e293b]' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className={`text-sm font-bold flex items-center gap-2 transition-colors duration-300 ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
                   <Terminal className="w-4 h-4 text-emerald-400" />
                   Live Audit Trail (events.jsonl)
                 </h3>
                 <button 
                   onClick={fetchStatus}
-                  className="p-1 hover:bg-[#1e293b] text-slate-500 hover:text-white rounded transition-all"
+                  className={`p-1 rounded transition-all ${theme === 'dark' ? 'hover:bg-[#1e293b] text-slate-500 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-800'}`}
                   title="Refresh logs"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="bg-[#0b0f19] border border-[#1e293b] rounded-xl p-3.5 font-mono text-[10px] text-slate-400 max-h-[250px] overflow-y-auto flex flex-col gap-2">
+              <div className={`border rounded-xl p-3.5 font-mono text-[10px] max-h-[250px] overflow-y-auto flex flex-col gap-2 transition-all duration-300 ${theme === 'dark' ? 'bg-[#0b0f19] border-[#1e293b] text-slate-400' : 'bg-slate-50 border-slate-150 text-slate-600'}`}>
                 {status.runLogs && status.runLogs.length > 0 ? (
                   status.runLogs.slice(-15).reverse().map((logMsg, i) => {
                     const timeStamp = logMsg.substring(0, 26);
                     const coreMsg = logMsg.substring(26);
                     return (
-                      <div key={i} className="border-b border-[#1e293b]/40 pb-1.5 last:border-0 last:pb-0">
+                      <div key={i} className={`border-b pb-1.5 last:border-0 last:pb-0 transition-colors duration-300 ${theme === 'dark' ? 'border-[#1e293b]/40' : 'border-slate-200/50'}`}>
                         <span className="text-[#3b82f6] block font-semibold">{timeStamp}</span>
-                        <span className="text-slate-300">{coreMsg}</span>
+                        <span className={theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}>{coreMsg}</span>
                       </div>
                     );
                   })
@@ -1061,9 +1129,9 @@ export default function App() {
       </div>
 
       {/* DASHBOARD BOTTOM FOOTER */}
-      <footer className="mt-12 border-t border-[#121824] bg-[#070a11] py-8 text-center text-slate-500 text-xs font-mono">
+      <footer className={`mt-12 border-t py-8 text-center text-xs font-mono transition-colors duration-300 ${theme === 'dark' ? 'border-[#121824] bg-[#070a11] text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
         <p className="tracking-wide">LymeWatch Medical Intelligence Dashboard — Zero-Cost Architecture Deployment</p>
-        <p className="text-slate-600 mt-2">© 2026 Google AI Studio Applet Runtime. Managed server-side.</p>
+        <p className={`${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} mt-2`}>© 2026 Google AI Studio Applet Runtime. Managed server-side.</p>
       </footer>
 
     </div>
