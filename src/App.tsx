@@ -564,12 +564,12 @@ export default function App() {
                           No daily run compiled yet. Trigger a run above!
                         </div>
                       ) : (
-                        digests.map((dig) => (
+                        digests.map((dig, idx) => (
                           <button
-                            key={dig.date}
+                            key={`${dig.date}-${dig.runManifest?.timestamp || idx}`}
                             onClick={() => setSelectedDigest(dig)}
                             className={`px-3 py-2.5 rounded-lg border text-left flex sm:flex-col justify-between items-center sm:items-start gap-1 transition-all shrink-0 min-w-[120px] ${
-                              selectedDigest?.date === dig.date
+                              selectedDigest?.runManifest?.timestamp === dig.runManifest?.timestamp
                                 ? theme === 'dark'
                                   ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-md'
                                   : 'bg-emerald-50 border-emerald-500/40 text-emerald-700 shadow-sm'
