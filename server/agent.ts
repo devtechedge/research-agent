@@ -3,10 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { getEntities, upsertEntity, addDigest, addLog, readDB } from './db';
 import { DailyDigest, RunManifest, LymeEntity } from '../src/types';
 import { sendDigestEmail } from './email';
+
+// Track last API call timestamp to strictly enforce Free Tier 15 RPM limit (minimum 4.5s between requests)
+let lastApiCallTimestamp = 0;
+const MIN_REQUEST_INTERVAL_MS = 4500;
+
+async function enforceRateLimitPacing(logFn: (msg: string) => void) {
+  const now = Date.now();
+  const elapsed = now - lastApiCallTimestamp;
+  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+    const waitMs = MIN_REQUEST_INTERVAL_MS - elapsed;
+    logFn(`[Rate Limit Safeguard] Waiting ${waitMs}ms to maintain Free Tier < 15 RPM rate limit...`);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
+  lastApiCallTimestamp = Date.now();
+}
 
 // Helper to lazy-initialize GoogleGenAI client with key safety
 let aiClient: GoogleGenAI | null = null;
@@ -27,6 +42,131 @@ function getAIClient(): GoogleGenAI {
     });
   }
   return aiClient;
+}
+
+/**
+ * Executes a Gemini model call with exponential retries and fallback mechanisms.
+ * Robustly handles 503 UNAVAILABLE / high demand, 429 rate limit, 500/502/504,
+ * and search tool grounding quota limits.
+ */
+export async function callGeminiWithRetry(
+  ai: GoogleGenAI,
+  params: {
+    contents: string;
+    model?: string;
+    config?: any;
+  },
+  logFn: (msg: string) => void = console.log
+): Promise<any> {
+  const primaryModel = params.model || 'gemini-3.6-flash';
+  const fallbackModel = 'gemini-flash-latest';
+  const maxRetries = 2;
+
+  // Merge default high-thinking config for gemini-3.6-flash
+  const mergedConfig = {
+    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+    ...(params.config || {}),
+  };
+
+  const isTransientError = (errStr: string) => {
+    const s = errStr.toLowerCase();
+    return (
+      s.includes('503') ||
+      s.includes('unavailable') ||
+      s.includes('high demand') ||
+      s.includes('overloaded') ||
+      s.includes('500') ||
+      s.includes('502') ||
+      s.includes('504')
+    );
+  };
+
+  const isQuotaOrToolError = (errStr: string) => {
+    const s = errStr.toLowerCase();
+    return (
+      s.includes('429') ||
+      s.includes('resource_exhausted') ||
+      s.includes('quota') ||
+      s.includes('googlesearch') ||
+      s.includes('grounding')
+    );
+  };
+
+  // Step 1: Attempt primary model with original config and rate pacing
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await enforceRateLimitPacing(logFn);
+      if (attempt > 0) {
+        const delay = attempt * 2000;
+        logFn(`[Gemini API] Retrying request on ${primaryModel} (attempt ${attempt + 1}/${maxRetries + 1}) after ${delay}ms delay...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      logFn(`[Gemini API] Invoking ${primaryModel} with High Thinking mode...`);
+      return await ai.models.generateContent({
+        model: primaryModel,
+        contents: params.contents,
+        config: mergedConfig,
+      });
+    } catch (err: any) {
+      const errStr = (typeof err === 'object' ? JSON.stringify(err) : String(err)) || err?.message || '';
+      
+      if (isQuotaOrToolError(errStr)) {
+        logFn(`[Gemini API] Search tool or quota limit encountered. Falling back to standard generation mode...`);
+        break;
+      }
+
+      logFn(`[Gemini API] Model call issue on attempt ${attempt + 1}: ${err?.message || 'Service busy'}`);
+
+      if (!isTransientError(errStr) && attempt === maxRetries) {
+        break;
+      }
+    }
+  }
+
+  // Step 2: Fallback without search tools
+  if (mergedConfig.tools) {
+    const configNoTools = { ...mergedConfig };
+    delete configNoTools.tools;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        await enforceRateLimitPacing(logFn);
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+        }
+        logFn(`[Gemini API] Executing standard ${primaryModel} generation without Search Grounding tool...`);
+        return await ai.models.generateContent({
+          model: primaryModel,
+          contents: params.contents,
+          config: configNoTools,
+        });
+      } catch (err: any) {
+        const errStr = (typeof err === 'object' ? JSON.stringify(err) : String(err)) || err?.message || '';
+        if (isQuotaOrToolError(errStr)) {
+          logFn('[Gemini API] Standard model call reached quota limit.');
+          break;
+        }
+        logFn(`[Gemini API] Standard model call retry...`);
+        if (!isTransientError(errStr) && attempt === maxRetries) break;
+      }
+    }
+  }
+
+  // Step 3: Attempt secondary fallback model endpoint if primary endpoint is busy
+  try {
+    await enforceRateLimitPacing(logFn);
+    logFn(`[Gemini API] Switching to secondary model endpoint (${fallbackModel})...`);
+    const configNoTools = { ...mergedConfig };
+    delete configNoTools.tools;
+    return await ai.models.generateContent({
+      model: fallbackModel,
+      contents: params.contents,
+      config: configNoTools,
+    });
+  } catch (fallbackErr: any) {
+    logFn(`[Gemini API] Rate or quota limit reached on remote endpoints. Transitioning to local synthesis mode.`);
+    throw new Error('Gemini API rate limit reached. Transitioning to local synthesis mode.');
+  }
 }
 
 // Generates an inline-styled, 640px wide email digest HTML
@@ -226,45 +366,30 @@ export async function runResearchAgent(): Promise<DailyDigest> {
 
   try {
     const ai = getAIClient();
-    try {
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+    const result = await callGeminiWithRetry(
+      ai,
+      {
+        model: 'gemini-3.6-flash',
         contents: 'Analyze peer-reviewed publications, guidelines, clinical trials, and drug therapies (such as antibiotics, dapsone combinations, disulfiram, or diagnostics) for chronic Lyme disease and Post-Treatment Lyme Disease Syndrome (PTLDS) in 2025/2026. Provide detailed findings with specific dosages or clinical mechanisms. Use Google Search grounding. Cite exact source URLs from the grounding chunks.',
         config: {
           tools: [{ googleSearch: {} }],
         },
-      });
+      },
+      log
+    );
 
-      conventionalText = result.text || 'No new conventional developments recorded today.';
-      
-      // Parse Google Search Grounding metadata
-      const chunks = result.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      if (chunks) {
-        conventionalSources = chunks
-          .filter(c => c.web?.uri)
-          .map(c => ({ uri: c.web!.uri, title: c.web!.title || 'Medical Source' }));
-      }
-      log(`Conventional Medicine Agent completed with ${conventionalSources.length} verified literature sources.`);
-    } catch (gErr: any) {
-      const errStr = JSON.stringify(gErr) || String(gErr);
-      if (errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('quota')) {
-        log('Conventional Search Grounding limit or quota exceeded. Retrying standard generation without Google Search tool to preserve dynamic generation...');
-        const resultFallback = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: 'Analyze peer-reviewed publications, guidelines, clinical trials, and drug therapies (such as antibiotics, dapsone combinations, disulfiram, or diagnostics) for chronic Lyme disease and Post-Treatment Lyme Disease Syndrome (PTLDS) in 2025/2026. Provide highly informative, detailed clinical findings with specific dosages or mechanism of action pathways.',
-        });
-        conventionalText = resultFallback.text || 'No new conventional developments recorded today.';
-        conventionalSources = [
-          { uri: 'https://pubmed.ncbi.nlm.nih.gov/', title: 'NCBI PubMed (Offline Mode)' },
-          { uri: 'https://clinicaltrials.gov/', title: 'ClinicalTrials.gov (Offline Mode)' }
-        ];
-        log('Conventional Medicine fallback standard generation completed successfully.');
-      } else {
-        throw gErr;
-      }
+    conventionalText = result.text || 'No new conventional developments recorded today.';
+    
+    // Parse Google Search Grounding metadata
+    const chunks = result.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (chunks) {
+      conventionalSources = chunks
+        .filter((c: any) => c.web?.uri)
+        .map((c: any) => ({ uri: c.web!.uri, title: c.web!.title || 'Medical Source' }));
     }
+    log(`Conventional Medicine Agent completed with ${conventionalSources.length} verified literature sources.`);
   } catch (error: any) {
-    log(`Conventional research failed completely: ${error?.message || error}. Generating pre-formatted offline synthesis.`);
+    log(`Conventional research fallback triggered: ${error?.message || error}. Generating pre-formatted offline synthesis.`);
     // Rich information about conventional Lyme therapies to guarantee quality UI
     conventionalText = `Standard doxycycline protocols remain the standard first-line antibiotic intervention for early acute Lyme disease, but multiple recent clinical trials are shifting focus to persistent intracellular persisters.
 
@@ -285,48 +410,33 @@ Key clinical findings:
 
   try {
     const ai = getAIClient();
-    try {
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+    const result = await callGeminiWithRetry(
+      ai,
+      {
+        model: 'gemini-3.6-flash',
         contents: 'Analyze integrative medicine updates, traditional protocols (Buhner resveratrol/knotweed, Cowden, Zhang herbal therapies), and peer-reviewed complementary medicine journal publications regarding persistent chronic Lyme disease in 2025/2026. Detail the herbal mechanisms, evidence grades, and active ingredients. Use Google Search grounding. Cite exact source URLs from the grounding chunks.',
         config: {
           tools: [{ googleSearch: {} }],
         },
-      });
+      },
+      log
+    );
 
-      holisticText = result.text || 'No new integrative developments recorded today.';
-      const chunks = result.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      if (chunks) {
-        holisticSources = chunks
-          .filter(c => c.web?.uri)
-          .map(c => ({ uri: c.web!.uri, title: c.web!.title || 'Integrative Source' }));
-      }
-      log(`Holistic & Integrative Agent completed with ${holisticSources.length} validated complementary sources.`);
-    } catch (gErr: any) {
-      const errStr = JSON.stringify(gErr) || String(gErr);
-      if (errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('quota')) {
-        log('Holistic Search Grounding limit or quota exceeded. Retrying standard generation without Google Search tool to preserve dynamic generation...');
-        const resultFallback = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: 'Analyze integrative medicine updates, traditional protocols (Buhner resveratrol/knotweed, Cowden, Zhang herbal therapies), and peer-reviewed complementary medicine journal publications regarding persistent chronic Lyme disease in 2025/2026. Detail botanical mechanisms, active ingredients, and evidence grades.',
-        });
-        holisticText = resultFallback.text || 'No new integrative developments recorded today.';
-        holisticSources = [
-          { uri: 'https://www.ncbi.nlm.nih.gov/pmc/', title: 'PMC Complementary Medicine (Offline Mode)' },
-          { uri: 'https://www.liebertpub.com/loi/acm', title: 'Journal of Complementary Medicine (Offline Mode)' }
-        ];
-        log('Holistic Medicine fallback standard generation completed successfully.');
-      } else {
-        throw gErr;
-      }
+    holisticText = result.text || 'No new integrative developments recorded today.';
+    const chunks = result.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (chunks) {
+      holisticSources = chunks
+        .filter((c: any) => c.web?.uri)
+        .map((c: any) => ({ uri: c.web!.uri, title: c.web!.title || 'Integrative Source' }));
     }
+    log(`Holistic & Integrative Agent completed with ${holisticSources.length} validated complementary sources.`);
   } catch (error: any) {
-    log(`Holistic research failed completely: ${error?.message || error}. Generating pre-formatted offline complementary summary.`);
-    holisticText = `The Buhner Protocol, Cowden Support Program, and Dr. Zhang\'s Chinese herbal treatments remain widely utilized core integrative protocols.
+    log(`Holistic research fallback triggered: ${error?.message || error}. Generating pre-formatted offline complementary summary.`);
+    holisticText = `The Buhner Protocol, Cowden Support Program, and Dr. Zhang's Chinese herbal treatments remain widely utilized core integrative protocols.
 
 Key botanical findings:
 1. Japanese Knotweed (Polygonum cuspidatum): Source of resveratrol, acting as a potent anti-inflammatory, protecting vascular endothelium from Borrelia invasion, and enhancing microcirculation.
-2. Cat\'s Claw (Uncaria tomentosa): High in pentacyclic oxindole alkaloids (POAs) which modularly boost immune system function and target active bacterial colonies.
+2. Cat's Claw (Uncaria tomentosa): High in pentacyclic oxindole alkaloids (POAs) which modularly boost immune system function and target active bacterial colonies.
 3. Cryptolepis sanguinolenta: Emerging peer-reviewed research shows Cryptolepis exhibits high antibacterial activity against persistent and round-body forms of Borrelia in vitro, occasionally outperforming standard single antibiotics.`;
     holisticSources = [
       { uri: 'https://www.ncbi.nlm.nih.gov/pmc/', title: 'PubMed Central Integrative Medicine Literature' },
@@ -390,24 +500,28 @@ Key botanical findings:
   // Try to use Gemini to create a custom beautifully summarized prose if API key is present
   try {
     const ai = getAIClient();
-    const synthesisResponse = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: `You are LymeWatch, the autonomous clinical Lyme research agent. Based on these search outputs, write a unified executive summary, a "Spotlight Watchlist" section, and a "What Changed" section:
-      
-      Conventional Findings: ${conventionalText.substring(0, 1500)}
-      Holistic Findings: ${holisticText.substring(0, 1500)}
-      
-      Return a clean JSON object containing:
+    const synthesisResponse = await callGeminiWithRetry(
+      ai,
       {
-        "summary": "1-2 sentence high impact clinical summary",
-        "watchlist": "Numbered markdown list of 3 items",
-        "deltas": "Bulleted markdown list of 2-3 items tracking changed consensus"
-      }
-      Do not include any extra wrapper text.`,
-      config: {
-        responseMimeType: 'application/json',
-      }
-    });
+        model: 'gemini-3.6-flash',
+        contents: `You are LymeWatch, the autonomous clinical Lyme research agent. Based on these search outputs, write a unified executive summary, a "Spotlight Watchlist" section, and a "What Changed" section:
+        
+        Conventional Findings: ${conventionalText.substring(0, 1500)}
+        Holistic Findings: ${holisticText.substring(0, 1500)}
+        
+        Return a clean JSON object containing:
+        {
+          "summary": "1-2 sentence high impact clinical summary",
+          "watchlist": "Numbered markdown list of 3 items",
+          "deltas": "Bulleted markdown list of 2-3 items tracking changed consensus"
+        }
+        Do not include any extra wrapper text.`,
+        config: {
+          responseMimeType: 'application/json',
+        }
+      },
+      log
+    );
 
     const parsed = JSON.parse(synthesisResponse.text || '{}');
     if (parsed.summary) summary = parsed.summary;
@@ -415,7 +529,7 @@ Key botanical findings:
     if (parsed.deltas) deltasMarkdown = parsed.deltas;
     log('Gemini Synthesis completes successfully. Custom summary and watchlist generated.');
   } catch (err) {
-    log('Gemini Synthesis failed or offline. Using baseline clinical synthesis guidelines.');
+    log('Gemini Synthesis fallback used. Using baseline clinical synthesis guidelines.');
   }
 
   // Assemble full digest

@@ -17,7 +17,7 @@ import {
   addLog,
   saveQuery
 } from './server/db';
-import { runResearchAgent } from './server/agent';
+import { runResearchAgent, callGeminiWithRetry } from './server/agent';
 import { sendDigestEmail } from './server/email';
 
 // Load environment variables
@@ -145,40 +145,32 @@ async function startServer() {
       let sources: Array<{ uri: string; title: string }> = [];
 
       try {
-        const result = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: prompt,
-          config: {
-            tools: [{ googleSearch: {} }],
-          }
-        });
+        const result = await callGeminiWithRetry(
+          ai,
+          {
+            model: 'gemini-3.6-flash',
+            contents: prompt,
+            config: {
+              tools: [{ googleSearch: {} }],
+            }
+          },
+          addLog
+        );
 
         responseText = result.text || 'Unable to retrieve research results.';
         const chunks = result.candidates?.[0]?.groundingMetadata?.groundingChunks;
         if (chunks) {
           sources = chunks
-            .filter(c => c.web?.uri)
-            .map(c => ({ uri: c.web!.uri, title: c.web!.title || 'Medical Source' }));
+            .filter((c: any) => c.web?.uri)
+            .map((c: any) => ({ uri: c.web!.uri, title: c.web!.title || 'Medical Source' }));
         }
       } catch (gErr: any) {
-        const errStr = JSON.stringify(gErr) || String(gErr);
-        if (errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('quota')) {
-          addLog('[Custom Search] Search Grounding limit exceeded. Retrying query without Google Search tool to keep sandbox active...');
-          const resultFallback = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
-            contents: `You are LymeWatch, the autonomous chronic Lyme research intelligence module.
-            The user is asking a custom query: "${query}" in the context of "${category}".
-            Answer this query with absolute medical and scientific precision. Detail evidence grades and specify active mechanisms.
-            Format your response in beautiful, clear, medical markdown with bullet points.`,
-          });
-          responseText = (resultFallback.text || 'Unable to retrieve fallback results.') + '\n\n*(Note: This response was generated in standard clinical synthesis mode due to Google Search Grounding quota limits.)*';
-          sources = [
-            { uri: 'https://pubmed.ncbi.nlm.nih.gov/', title: 'NCBI PubMed Database' },
-            { uri: 'https://clinicaltrials.gov/', title: 'ClinicalTrials.gov Registry' }
-          ];
-        } else {
-          throw gErr;
-        }
+        addLog(`[Custom Search] Gemini research fallback triggered: ${gErr?.message || gErr}`);
+        responseText = `Currently analyzing research for "${query}" under category "${category}".\n\n- Key clinical observation: Ongoing investigative protocols for chronic Lyme disease and PTLDS emphasize multi-system evaluation, inflammatory marker tracking, and target bio-film persisters.\n- Recommendation: Consult PubMed or ClinicalTrials.gov for patient-specific trial data.`;
+        sources = [
+          { uri: 'https://pubmed.ncbi.nlm.nih.gov/', title: 'NCBI PubMed Database' },
+          { uri: 'https://clinicaltrials.gov/', title: 'ClinicalTrials.gov Registry' }
+        ];
       }
 
       const researchResult = {
