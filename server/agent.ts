@@ -89,36 +89,50 @@ export async function callGeminiWithRetry(
     }
   };
 
-  // Attempt 1: Primary model with search grounding & high thinking
+  const isQuotaError = (errStr: string) => {
+    const s = errStr.toLowerCase();
+    return s.includes('429') || s.includes('resource_exhausted') || s.includes('quota') || s.includes('limit');
+  };
+
+  // Attempt 1: Primary model (gemini-3.6-flash) with search grounding & high thinking
   try {
     logFn(`[Gemini API] Invoking ${primaryModel} with High Thinking mode...`);
-    return await executeWithTimeout(primaryModel, mergedConfig, 18000);
+    return await executeWithTimeout(primaryModel, mergedConfig, 10000);
   } catch (err: any) {
     const errStr = (typeof err === 'object' ? JSON.stringify(err) : String(err)) || err?.message || '';
-    logFn(`[Gemini API] Primary call on ${primaryModel} failed/timed out: ${err?.message || 'Service busy'}. Switching to fast fallback...`);
-  }
+    logFn(`[Gemini API] Primary call on ${primaryModel} issue: ${err?.message || 'Service busy'}.`);
 
-  // Attempt 2: Primary model without search tool if tool/search error
-  if (mergedConfig.tools) {
-    const configNoTools = { ...mergedConfig };
-    delete configNoTools.tools;
-    try {
-      logFn(`[Gemini API] Executing ${primaryModel} without Search Grounding...`);
-      return await executeWithTimeout(primaryModel, configNoTools, 12000);
-    } catch (err: any) {
-      logFn(`[Gemini API] Direct call without tools failed: ${err?.message || 'Unavailable'}`);
+    // If quota error on gemini-3.6-flash, skip tool retries on 3.6 and jump straight to gemini-2.5-flash
+    if (!isQuotaError(errStr) && mergedConfig.tools) {
+      const configNoTools = { ...mergedConfig };
+      delete configNoTools.tools;
+      try {
+        logFn(`[Gemini API] Executing ${primaryModel} without Search Grounding...`);
+        return await executeWithTimeout(primaryModel, configNoTools, 8000);
+      } catch (toolErr: any) {
+        logFn(`[Gemini API] Direct call without tools failed: ${toolErr?.message || 'Unavailable'}`);
+      }
     }
   }
 
-  // Attempt 3: Secondary fallback model (gemini-2.5-flash) for instant recovery when 3.6 is overloaded
+  // Attempt 2: Resilient fallback model (gemini-2.5-flash) WITH search grounding
   try {
-    logFn(`[Gemini API] Switching to resilient fallback model (${fallbackModel})...`);
+    logFn(`[Gemini API] Switching to resilient model (${fallbackModel}) with Search Grounding...`);
     const fallbackConfig = { ...mergedConfig };
-    delete fallbackConfig.tools;
-    delete fallbackConfig.thinkingConfig;
-    return await executeWithTimeout(fallbackModel, fallbackConfig, 10000);
+    delete fallbackConfig.thinkingConfig; // gemini-2.5-flash uses standard thinking mode
+    return await executeWithTimeout(fallbackModel, fallbackConfig, 8000);
+  } catch (fallbackSearchErr: any) {
+    logFn(`[Gemini API] Fallback search call failed/timed out. Retrying ${fallbackModel} without tools...`);
+  }
+
+  // Attempt 3: Secondary fallback model (gemini-2.5-flash) WITHOUT tools
+  try {
+    const fallbackConfigNoTools = { ...mergedConfig };
+    delete fallbackConfigNoTools.tools;
+    delete fallbackConfigNoTools.thinkingConfig;
+    return await executeWithTimeout(fallbackModel, fallbackConfigNoTools, 6000);
   } catch (fallbackErr: any) {
-    logFn(`[Gemini API] All remote endpoints busy. Transitioning to local synthesis engine.`);
+    logFn(`[Gemini API] Remote endpoints reached quota. Using instant offline synthesis engine.`);
     throw new Error('Gemini API endpoints busy. Using local synthesis engine.');
   }
 }
